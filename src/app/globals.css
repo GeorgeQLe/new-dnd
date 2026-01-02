@@ -120,3 +120,65 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom animations for drag and drop */
+@keyframes insertion-pulse {
+  0%, 100% { 
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 0.6;
+    transform: scale(1.01);
+  }
+}
+
+@keyframes drop-indicator-glow {
+  0%, 100% { 
+    box-shadow: 0 0 5px rgba(var(--primary), 0.5);
+  }
+  50% { 
+    box-shadow: 0 0 15px rgba(var(--primary), 0.8);
+  }
+}
+
+@keyframes preview-pulse {
+  0%, 100% { 
+    opacity: 0.6;
+    transform: scale3d(1, 1, 1);
+  }
+  50% { 
+    opacity: 0.8;
+    transform: scale3d(1.005, 1.005, 1);
+  }
+}
+
+@keyframes fade-in {
+  from { 
+    opacity: 0;
+    transform: scale3d(0.98, 0.98, 1);
+  }
+  to { 
+    opacity: 0.5;
+    transform: scale3d(1, 1, 1);
+  }
+}
+
+/* Enhanced CSS performance with hardware acceleration */
+.dnd-animated {
+  will-change: transform;
+  backface-visibility: hidden;
+  perspective: 1000px;
+  transform-style: preserve-3d;
+}
+
+.dnd-ghost-preview {
+  pointer-events: none;
+  user-select: none;
+  will-change: opacity, transform;
+  backface-visibility: hidden;
+}
+
+.animate-fade-in {
+  animation: fade-in 300ms ease-out forwards;
+}

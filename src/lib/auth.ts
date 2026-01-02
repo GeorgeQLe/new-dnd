@@ -9,6 +9,7 @@ export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg", // or "pg" or "mysql"
   }),
+  secret: process.env.BETTER_AUTH_SECRET || "fallback-secret-for-development-only",
   pages: {
     signIn: "/login",
   },

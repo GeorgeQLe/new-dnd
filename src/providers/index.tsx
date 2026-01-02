@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { ThemeProvider } from "next-themes";
 
 import { TRPCReactProvider } from "@/trpc/client";
 
@@ -17,8 +18,10 @@ export const Provider = ({children}: ProviderProps) => {
   if(!isMounted) return null;
 
   return (
-    <TRPCReactProvider>
-      {children}
-    </TRPCReactProvider>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <TRPCReactProvider>
+        {children}
+      </TRPCReactProvider>
+    </ThemeProvider>
   );
 };
