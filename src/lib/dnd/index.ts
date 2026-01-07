@@ -11,6 +11,8 @@ export type {
   DragItem,
   DropTarget,
   InsertPosition,
+  ListInsertPosition,
+  GhostAxis,
   DragStatus,
   DragState,
   DragStateIdle,
@@ -76,6 +78,22 @@ export { useHoverDetection, useDropPosition } from "./hooks/use-hover-detection"
 export { usePreviewAnimation, useListPreviewAnimation } from "./hooks/use-preview-animation";
 export { useListDisplacement, useBoardDisplacement, useListInBoard } from "./hooks/use-list-displacement";
 export { useGhostTrigger } from "./hooks/use-ghost-trigger";
+export {
+  useListDragAnimation,
+  applyListSlides,
+  resetAllListSlides,
+  calculateDropInfo,
+  calculateSlides,
+  calculateGhostSlot,
+  calculateNewIndex,
+  detectHoverTargetWithHysteresis,
+  type HoverTarget,
+  type HoverTargetType,
+  type SlideDirection,
+  type DropInfo,
+  type ListDragAnimationResult,
+  type UseListDragAnimationOptions,
+} from "./hooks/use-list-drag-animation";
 
 // ============================================================
 // Sensors

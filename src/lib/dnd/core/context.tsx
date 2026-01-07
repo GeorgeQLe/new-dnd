@@ -34,6 +34,7 @@ interface DndContextValue {
   startDrag: () => void;
   updateDrag: (coordinates: Coordinates) => void;
   setGhostIndicator: (visible: boolean, insertionIndex?: number | null) => void;
+  setListGhostIndicator: (visible: boolean, insertionIndex?: number | null) => void;
   endDrag: () => void;
   cancelDrag: () => void;
 
@@ -73,6 +74,11 @@ type DndAction =
       visible: boolean;
       insertionIndex?: number | null;
     }
+  | {
+      type: "SET_LIST_GHOST_INDICATOR";
+      visible: boolean;
+      insertionIndex?: number | null;
+    }
   | { type: "END_DRAG" }
   | { type: "CANCEL_DRAG" }
   | { type: "RESET" };
@@ -99,6 +105,8 @@ function dndReducer(state: DragState, action: DndAction): DragState {
         insertPosition: null,
         ghostIndicatorVisible: false,
         ghostInsertionIndex: null,
+        listGhostIndicatorVisible: false,
+        listGhostInsertionIndex: null,
       };
 
     case "UPDATE_DRAG":
@@ -120,6 +128,14 @@ function dndReducer(state: DragState, action: DndAction): DragState {
         ...state,
         ghostIndicatorVisible: action.visible,
         ghostInsertionIndex: action.visible ? action.insertionIndex ?? null : null,
+      };
+
+    case "SET_LIST_GHOST_INDICATOR":
+      if (state.status !== "dragging") return state;
+      return {
+        ...state,
+        listGhostIndicatorVisible: action.visible,
+        listGhostInsertionIndex: action.visible ? action.insertionIndex ?? null : null,
       };
 
     case "END_DRAG":
@@ -349,10 +365,21 @@ export function DndProvider({
 
   const setGhostIndicator = React.useCallback(
     (visible: boolean, insertionIndex?: number | null) => {
-      dispatch({ 
-        type: "SET_GHOST_INDICATOR", 
-        visible, 
-        insertionIndex: insertionIndex ?? null 
+      dispatch({
+        type: "SET_GHOST_INDICATOR",
+        visible,
+        insertionIndex: insertionIndex ?? null
+      });
+    },
+    []
+  );
+
+  const setListGhostIndicator = React.useCallback(
+    (visible: boolean, insertionIndex?: number | null) => {
+      dispatch({
+        type: "SET_LIST_GHOST_INDICATOR",
+        visible,
+        insertionIndex: insertionIndex ?? null
       });
     },
     []
@@ -444,6 +471,7 @@ export function DndProvider({
       startDrag,
       updateDrag,
       setGhostIndicator,
+      setListGhostIndicator,
       endDrag,
       cancelDrag,
       setOverlayContent,
@@ -463,6 +491,7 @@ export function DndProvider({
       startDrag,
       updateDrag,
       setGhostIndicator,
+      setListGhostIndicator,
       endDrag,
       cancelDrag,
       overlayContent,

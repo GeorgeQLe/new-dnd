@@ -41,6 +41,10 @@ interface SmartDisplacementOptions {
   dragItem?: DragItem | null;
   /** Current container ID (for same-list filtering) */
   containerId?: string;
+  /** Current index of the dragged item (for adjacent position filtering) */
+  draggedItemIndex?: number;
+  /** Whether to skip adjacent positions (default: true for lists) */
+  skipAdjacentPositions?: boolean;
 }
 
 // ============================================================
@@ -133,15 +137,26 @@ function calculateInsertionPoint(
   
   // Find the insertion index based on mouse position
   let insertionIndex = 0;
-  
+
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
-    const center = isVertical 
+    const center = isVertical
       ? item.rect.top + item.rect.height / 2
       : item.rect.left + item.rect.width / 2;
-    
+
     const mousePos = isVertical ? mousePosition.y : mousePosition.x;
-    
+
+    // DEBUG: Log coordinate comparison for list displacement
+    if (!isVertical) {
+      console.log("[DISPLACEMENT-CALC]", {
+        mousePos: { x: mousePosition.x, y: mousePosition.y },
+        itemIndex: i,
+        itemRectLeft: item.rect.left,
+        itemRectCenter: center,
+        comparison: `${mousePos} < ${center} = ${mousePos < center}`,
+      });
+    }
+
     if (mousePos < center) {
       insertionIndex = i;
       break;
@@ -188,6 +203,8 @@ export function useSmartDisplacement({
   itemSelector = "[data-id]",
   dragItem = null,
   containerId = undefined,
+  draggedItemIndex,
+  skipAdjacentPositions,
 }: SmartDisplacementOptions): DisplacementCalculation | null {
   const [calculation, setCalculation] = React.useState<DisplacementCalculation | null>(null);
 
@@ -228,6 +245,20 @@ export function useSmartDisplacement({
       items,
       itemType
     );
+
+    // Apply adjacent position filtering to match ghost trigger behavior
+    // This ensures displacement and ghost indicator agree on insertion index
+    const shouldSkipAdjacent = skipAdjacentPositions ?? itemType === "list";
+    if (shouldSkipAdjacent && typeof draggedItemIndex === "number") {
+      const isHorizontal = itemType === "list";
+      const isInvalidPosition = isHorizontal
+        ? (insertionIndex === draggedItemIndex || insertionIndex === draggedItemIndex + 1)
+        : Math.abs(insertionIndex - draggedItemIndex) <= 1;
+      if (isInvalidPosition) {
+        setCalculation(null);
+        return;
+      }
+    }
 
     // Calculate displacement direction and affected items based on available space
     let direction: "up" | "down" | "left" | "right";
@@ -305,6 +336,8 @@ export function useSmartDisplacement({
     containerDimensions,
     items,
     itemType,
+    draggedItemIndex,
+    skipAdjacentPositions,
   ]);
 
   return calculation;

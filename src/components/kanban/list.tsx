@@ -29,6 +29,10 @@ interface KanbanListProps {
   disabled?: boolean;
   className?: string;
   onAddCard?: (listId: string) => void;
+  /** Whether this list is currently being dragged (for dimmed placeholder effect) */
+  isDragging?: boolean;
+  /** Whether list dragging is disabled (e.g., single list on board) */
+  listDragDisabled?: boolean;
 }
 
 // ============================================================
@@ -40,6 +44,8 @@ export function KanbanList({
   disabled = false,
   className,
   onAddCard,
+  isDragging: isListBeingDragged = false,
+  listDragDisabled = false,
 }: KanbanListProps) {
   const cardsContainerRef = React.useRef<HTMLDivElement>(null);
   
@@ -51,20 +57,21 @@ export function KanbanList({
   );
 
   // List itself is sortable (for horizontal reordering)
+  // Disable sortable if listDragDisabled is true (e.g., single list on board)
   const sortable = useSortable({
     id: list.id,
     type: "list",
     index,
     containerId: list.boardId,
-    data: { 
-      boardId: list.boardId, 
-      listName: list.name, 
+    data: {
+      boardId: list.boardId,
+      listName: list.name,
       index,
       // Pass full list data for insertion ghost
       cards: list.cards,
       name: list.name
     },
-    disabled,
+    disabled: disabled || listDragDisabled,
   });
 
   // Get mouse position from DnD context first (doesn't depend on droppable)
@@ -238,15 +245,15 @@ export function KanbanList({
       className={cn(
         "flex flex-col w-72 shrink-0 rounded-lg bg-muted/50 border",
         "transition-all duration-200",
-        // Keep dragged list visible (no opacity change)
-        // sortable.isDragging && "opacity-30", // REMOVED: Show normal element while dragging
-        droppable.isOver && droppable.canDrop && "ring-2 ring-primary/50 bg-muted/70",
+        // Dimmed placeholder effect when this list is being dragged (per spec: opacity ~0.3)
+        isListBeingDragged && "opacity-30 pointer-events-none",
+        droppable.isOver && droppable.canDrop && !isListBeingDragged && "ring-2 ring-primary/50 bg-muted/70",
         className
       )}
       style={{
         ...sortable.style,
-        // Override sortable opacity - keep dragged element visible
-        opacity: sortable.isDragging ? 1 : sortable.style?.opacity,
+        // Override sortable opacity when not the dragged list
+        opacity: isListBeingDragged ? 0.3 : sortable.isDragging ? 1 : sortable.style?.opacity,
       }}
     >
       {/* List header - drag handle for list reordering */}
@@ -254,11 +261,11 @@ export function KanbanList({
         data-slot="kanban-list-header"
         className={cn(
           "flex items-center justify-between p-3 border-b",
-          "cursor-grab active:cursor-grabbing",
-          disabled && "cursor-default"
+          !listDragDisabled && !disabled && "cursor-grab active:cursor-grabbing",
+          (disabled || listDragDisabled) && "cursor-default"
         )}
         {...sortable.attributes}
-        {...sortable.listeners}
+        {...(listDragDisabled ? {} : sortable.listeners)}
       >
         <h3 className="font-semibold text-sm">{list.name}</h3>
         <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">

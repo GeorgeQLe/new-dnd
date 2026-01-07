@@ -204,6 +204,10 @@ export function calculateInsertPosition(
 /**
  * Calculate insert position within a horizontal sortable container (like lists on a board)
  * Determines where an item should be inserted based on pointer position
+ *
+ * Uses ORIGINAL indices (not filtered) to ensure correct reordering when:
+ * - Mouse is within an item's bounds → return that item's original index
+ * - Mouse is in gaps/ends → use midpoint logic with original indices
  */
 export function calculateHorizontalInsertPosition(
   point: Coordinates,
@@ -211,7 +215,16 @@ export function calculateHorizontalInsertPosition(
   items: HTMLElement[],
   draggedId: UniqueId
 ): InsertPosition | null {
+  console.log("[HORIZ-INSERT] Called with:", {
+    pointX: point.x,
+    containerId,
+    draggedId,
+    itemCount: items.length,
+    itemIds: items.map(i => i.getAttribute("data-dnd-id")),
+  });
+
   if (items.length === 0) {
+    console.log("[HORIZ-INSERT] No items, returning index 0");
     return {
       listId: containerId,
       index: 0,
@@ -219,25 +232,19 @@ export function calculateHorizontalInsertPosition(
     };
   }
 
-  // Filter out the currently dragged item
-  const sortableItems = items.filter(
-    (item) => item.getAttribute("data-dnd-id") !== draggedId
-  );
+  // First pass: check if point is within any non-dragged item's bounds
+  // This ensures hovering over an item returns THAT item's position
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const itemId = item.getAttribute("data-dnd-id");
+    if (itemId === draggedId) continue;
 
-  if (sortableItems.length === 0) {
-    return {
-      listId: containerId,
-      index: 0,
-      indicator: "before",
-    };
-  }
+    const rect = getRect(item);
+    console.log(`[HORIZ-INSERT] Item ${i} (${itemId}): left=${rect.left}, right=${rect.right}, pointX=${point.x}`);
 
-  // Find insertion point by checking horizontal midpoints
-  for(let i = 0; i < sortableItems.length; i++) {
-    const rect = getRect(sortableItems[i]);
-    const midpoint = rect.left + rect.width / 2;
-
-    if (point.x < midpoint) {
+    if (point.x >= rect.left && point.x <= rect.right) {
+      // Point is within this item - return its ORIGINAL index
+      console.log(`[HORIZ-INSERT] Point within item ${i} bounds, returning index ${i}`);
       return {
         listId: containerId,
         index: i,
@@ -246,11 +253,27 @@ export function calculateHorizontalInsertPosition(
     }
   }
 
-  // If we're past all items, insert at the end
+  // Second pass: use midpoint logic for gaps/ends, tracking original indices
+  console.log("[HORIZ-INSERT] Point not within any item bounds, using midpoint logic");
+  let insertIndex = 0;
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (item.getAttribute("data-dnd-id") === draggedId) continue;
+
+    const rect = getRect(item);
+    const midpoint = rect.left + rect.width / 2;
+
+    if (point.x >= midpoint) {
+      insertIndex = i + 1; // Insert after this item (using original index)
+      console.log(`[HORIZ-INSERT] Past midpoint of item ${i}, insertIndex now ${insertIndex}`);
+    }
+  }
+
+  console.log(`[HORIZ-INSERT] Final insertIndex: ${insertIndex}`);
   return {
     listId: containerId,
-    index: sortableItems.length,
-    indicator: "after",
+    index: insertIndex,
+    indicator: insertIndex === 0 ? "before" : "after",
   };
 }
 

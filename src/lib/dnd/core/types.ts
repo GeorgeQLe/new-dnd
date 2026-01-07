@@ -127,6 +127,27 @@ export interface InsertPosition {
   indicator: "before" | "after";
 }
 
+/**
+ * Specifies where on a board a list should be inserted
+ * boardId: which board the list will be inserted into
+ * index: target position on the board (0-based)
+ */
+export interface ListInsertPosition {
+  boardId: UniqueId;
+  index: number;
+}
+
+// ============================================================
+// Ghost Trigger Types
+// ============================================================
+
+/**
+ * Axis for ghost indicator calculation
+ * "vertical": for cards (Y-axis calculation)
+ * "horizontal": for lists (X-axis calculation)
+ */
+export type GhostAxis = "vertical" | "horizontal";
+
 // ============================================================
 // Drag State Machine
 // ============================================================
@@ -168,8 +189,10 @@ export interface DragStatePending {
  * delta: offset from origin to current position
  * over: drop target currently under the cursor (if any)
  * insertPosition: where the item would be inserted if dropped (for sortable lists)
- * ghostIndicatorVisible: whether ghost indicator animation is active (after hover delay)
- * ghostInsertionIndex: precise insertion index from displacement system for ghost positioning
+ * ghostIndicatorVisible: whether ghost indicator animation is active (after hover delay) - for cards
+ * ghostInsertionIndex: precise insertion index from displacement system for ghost positioning - for cards
+ * listGhostIndicatorVisible: whether list ghost indicator is active (after hover delay) - for lists
+ * listGhostInsertionIndex: precise insertion index for list ghost positioning - for lists
  */
 export interface DragStateDragging {
   status: "dragging";
@@ -179,8 +202,12 @@ export interface DragStateDragging {
   delta: Coordinates;
   over: DropTarget | null;
   insertPosition: InsertPosition | null;
+  // Card ghost state
   ghostIndicatorVisible: boolean;
   ghostInsertionIndex: number | null;
+  // List ghost state
+  listGhostIndicatorVisible: boolean;
+  listGhostInsertionIndex: number | null;
 }
 
 /**

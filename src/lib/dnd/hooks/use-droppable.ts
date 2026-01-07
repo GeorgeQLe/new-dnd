@@ -12,6 +12,8 @@ interface UseDroppableConfig {
   type: DropType;
   accepts: DragType[];
   disabled?: boolean;
+  /** Custom selector for sortable items (default: "[data-dnd-id]") */
+  sortableSelector?: string;
 }
 
 interface UseDroppableReturn {
@@ -29,6 +31,7 @@ export function useDroppable({
   type,
   accepts,
   disabled = false,
+  sortableSelector = "[data-dnd-id]",
 }: UseDroppableConfig): UseDroppableReturn {
   const { state, registerDroppable, unregisterDroppable } = useDndContext();
   const nodeRef = React.useRef<HTMLElement | null>(null);
@@ -51,13 +54,13 @@ export function useDroppable({
     // Refresh cache if stale
     if (now - cacheTimestamp.current > CACHE_TTL) {
       sortableItemsCache.current = Array.from(
-        element.querySelectorAll("[data-dnd-id]")
+        element.querySelectorAll(sortableSelector)
       ) as HTMLElement[];
       cacheTimestamp.current = now;
     }
 
     return sortableItemsCache.current;
-  }, []);
+  }, [sortableSelector]);
 
   // Get active item from state
   const activeItem = React.useMemo(() => {
