@@ -1,12 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { useSortable, useDroppable, useDndContext, useGhostTrigger } from "@/lib/dnd";
-import { 
-  useSmartDisplacement, 
-  applyDisplacement,
-  revertAllDisplacedElements 
-} from "@/lib/dnd/hooks/use-smart-displacement";
+import { useSortable, useDroppable, useDndContext } from "@/lib/dnd";
+import {
+  useCardDragAnimation,
+  type CardGhost,
+} from "@/lib/dnd/hooks/use-card-drag-animation";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { KanbanCard, type KanbanCardData } from "./card";
@@ -74,38 +73,6 @@ export function KanbanList({
     disabled: disabled || listDragDisabled,
   });
 
-  // Get mouse position from DnD context first (doesn't depend on droppable)
-  const mousePosition = React.useMemo(() => {
-    if (state.status === "dragging" && cardsContainerRef.current) {
-      const containerRect = cardsContainerRef.current.getBoundingClientRect();
-      const currentPointer = state.current;
-      
-      if (currentPointer) {
-        const relativePosition = {
-          x: currentPointer.x - containerRect.left,
-          y: currentPointer.y - containerRect.top,
-        };
-        
-        
-        return relativePosition;
-      }
-    }
-    return null;
-  }, [state.status, state.status === "dragging" ? state.current : null, list.id]);
-
-  // Calculate smart displacement for cards within this list (minimal dependencies)
-  const displacement = useSmartDisplacement({
-    container: cardsContainerRef.current,
-    mousePosition,
-    itemType: "card",
-    enabled: !disabled && 
-             state.status === "dragging" && 
-             state.item?.type === "card",
-    itemSelector: "[data-dnd-id]",
-    dragItem: currentDragItem,
-    containerId: list.id,
-  });
-
   // List is also a drop target for cards and other lists
   const droppable = useDroppable({
     id: list.id,
@@ -114,117 +81,54 @@ export function KanbanList({
     disabled,
   });
 
-  // New ghost trigger logic - much simpler and more reliable
-  const ghostTrigger = useGhostTrigger({
-    enabled: !disabled && currentDragItem?.type === "card",
+  // Get mouse position from DnD context (container-relative)
+  const mousePosition = React.useMemo(() => {
+    if (state.status === "dragging" && cardsContainerRef.current && droppable.isOver) {
+      const containerRect = cardsContainerRef.current.getBoundingClientRect();
+      const currentPointer = state.current;
+
+      if (currentPointer) {
+        return {
+          x: currentPointer.x - containerRect.left,
+          y: currentPointer.y - containerRect.top,
+        };
+      }
+    }
+    return null;
+  }, [state.status, state.status === "dragging" ? state.current : null, droppable.isOver]);
+
+  // Get source list info from drag item
+  const dragSourceInfo = React.useMemo(() => {
+    if (currentDragItem?.type === "card") {
+      const data = currentDragItem.data as { listId: string; index: number };
+      return { listId: data.listId, index: data.index };
+    }
+    return null;
+  }, [currentDragItem]);
+
+  // New card drag animation hook - unified ghost and slide calculation
+  const cardAnimation = useCardDragAnimation({
     container: cardsContainerRef.current,
-    containerId: list.id,
     mousePosition,
-    isOver: droppable.isOver,
-    canDrop: droppable.canDrop,
-    delay: 400,
+    sourceListId: dragSourceInfo?.listId ?? null,
+    draggedIndex: dragSourceInfo?.index,
+    destListId: list.id,
+    cardCount: list.cards.length,
+    enabled: !disabled &&
+             droppable.isOver &&
+             droppable.canDrop &&
+             currentDragItem?.type === "card",
+    crossListSourceMode: "PLACEHOLDER",
+    hoverDelay: 400,
   });
 
-  // Create temporary ghost card when ghost trigger shows it should be visible
-  const ghostCard = React.useMemo(() => {
-    if (!ghostTrigger.shouldShowGhost || !currentDragItem || currentDragItem.type !== "card") {
-      return null;
-    }
+  // Extract ghost info from animation hook
+  const ghost = cardAnimation.ghost;
+  const isGhostVisible = cardAnimation.ghostVisible;
 
-    const dragSourceData = currentDragItem.data as { listId: string; index: number };
-    const dragSourceListId = dragSourceData.listId;
-    const draggedCardIndex = dragSourceData.index;
-    const insertionIndex = ghostTrigger.ghostInsertionIndex;
-    
-    
-    // Validate same-list moves based on empty space zones
-    if (dragSourceListId === list.id && typeof insertionIndex === "number") {
-      const totalCards = list.cards.length;
-      
-      // The empty space is at draggedCardIndex position
-      // Reject any insertion that would be in or adjacent to the empty space
-      
-      // For dragging card at index N, reject insertions at:
-      // - Index N (same position as empty space)  
-      // - Index N+1 (immediately after empty space)
-      const isInEmptySpaceZone = insertionIndex === draggedCardIndex || 
-                                insertionIndex === draggedCardIndex + 1;
-      
-      if (isInEmptySpaceZone) {
-        return null;
-      }
-    }
-
-    // Create ghost card based on dragged card data with safe property access
-    const data = currentDragItem.data as any;
-    const ghostText = dragSourceListId === list.id ? "Move card here" : "Place card here";
-    
-    const ghostCard = {
-      id: `ghost-${currentDragItem.id}`,
-      listId: list.id,
-      name: ghostText,
-      description: data?.description || null,
-      order: -1, // Temporary order
-      dueDate: data?.dueDate || null,
-      progress: data?.progress || null,
-      starred: data?.starred || null,
-    } as KanbanCardData;
-    
-    
-    return ghostCard;
-  }, [ghostTrigger.shouldShowGhost, ghostTrigger.ghostInsertionIndex, currentDragItem, list.id]);
-
-  // Create cards array with ghost card inserted at ghost insertion position
-  const cardsWithGhost = React.useMemo(() => {
-    if (!ghostCard || typeof ghostTrigger.ghostInsertionIndex !== "number") {
-      return list.cards;
-    }
-
-    const cards = [...list.cards];
-    const insertionIndex = ghostTrigger.ghostInsertionIndex;
-    
-    // Insert ghost card at the calculated insertion index
-    cards.splice(insertionIndex, 0, ghostCard);
-    return cards;
-  }, [list.cards, ghostCard, ghostTrigger.ghostInsertionIndex, list.id]);
-
-  // Ghost visibility is based on the new ghost trigger hook
-  const isGhostVisible = ghostTrigger.shouldShowGhost;
-
-
-  // Apply subtle displacement animation for cards to make room for temp card or rearrangement
-  React.useEffect(() => {
-    const isDisplacementActive = state.status === "dragging" && isGhostVisible;
-    
-    if (displacement && isDisplacementActive && displacement.affectedItems.length > 0) {
-      // Apply subtle displacement - cards move to make room (works for both cross-list and same-list)
-      applyDisplacement(displacement, "card", 200, 0.3);
-    } else {
-      // Revert all displaced cards
-      const container = cardsContainerRef.current;
-      if (container) {
-        revertAllDisplacedElements(container, 180);
-      }
-    }
-  }, [displacement, state.status, isGhostVisible]);
-
-  // Clean up any displaced elements when component unmounts or drag ends
-  React.useEffect(() => {
-    const container = cardsContainerRef.current;
-    
-    return () => {
-      if (container) {
-        revertAllDisplacedElements(container, 150);
-      }
-    };
-  }, []);
-
-  // Clean up displacement on drag end
-  React.useEffect(() => {
-    if (state.status !== "dragging" && cardsContainerRef.current) {
-      revertAllDisplacedElements(cardsContainerRef.current, 180);
-    }
-  }, [state.status]);
+  // Note: Ghost zone is rendered inline based on ghost.p position.
+  // No transform-based slides needed - the ghost zone naturally pushes
+  // other cards down via CSS flex layout.
 
   // Combine refs for both sortable and droppable
   const combinedRef = React.useCallback(
@@ -280,47 +184,70 @@ export function KanbanList({
           data-slot="kanban-list-content"
           className="flex flex-col gap-2 p-2 min-h-25"
         >
-          {(isGhostVisible ? cardsWithGhost : list.cards).map((card, cardIndex) => {
-            const isGhostCard = card.id.startsWith('ghost-');
-            const actualCardIndex = isGhostVisible && isGhostCard 
-              ? ghostTrigger.ghostInsertionIndex || cardIndex
-              : cardIndex - (isGhostVisible && cardIndex > (ghostTrigger.ghostInsertionIndex || 0) ? 1 : 0);
-            
+          {/* Ghost zone at start if ghost position is 0 */}
+          {isGhostVisible && ghost && ghost.p === 0 && (
+            <div
+              data-slot="card-ghost-zone"
+              className={cn(
+                "flex items-center justify-center",
+                "h-20 rounded-lg",
+                "bg-blue-100 dark:bg-blue-950/30",
+                "border-2 border-dashed border-blue-300 dark:border-blue-700",
+                "animate-in fade-in-0 duration-200"
+              )}
+              style={{ pointerEvents: 'none' }}
+            >
+              <span className="text-blue-500 dark:text-blue-400 text-sm font-medium opacity-70">
+                Place card here
+              </span>
+            </div>
+          )}
+
+          {list.cards.map((card, cardIndex) => {
+            // Calculate actual card index (not affected by ghost since ghost is separate)
+            const actualCardIndex = cardIndex;
+
             return (
               <React.Fragment key={card.id}>
-                {/* Show drop indicator before first card if over */}
+                {/* Show drop indicator before first card if over but no ghost visible */}
                 {droppable.isOver && cardIndex === 0 && !isGhostVisible && (
-                  <DropIndicator 
-                    position="before" 
+                  <DropIndicator
+                    position="before"
                     orientation="vertical"
                     dragItem={currentDragItem}
                   />
                 )}
 
-                <div
-                  style={isGhostCard ? {
-                    opacity: 0.6,
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    border: '2px dashed rgb(59, 130, 246)',
-                    borderRadius: '8px',
-                    pointerEvents: 'none'
-                  } : {}}
-                >
-                  <KanbanCard
-                    card={card}
-                    index={actualCardIndex}
-                    listId={list.id}
-                    disabled={disabled}
-                    className={cn(
-                      isGhostCard && "pointer-events-none"
-                    )}
-                  />
-                </div>
+                <KanbanCard
+                  card={card}
+                  index={actualCardIndex}
+                  listId={list.id}
+                  disabled={disabled}
+                />
 
-                {/* Show drop indicator after each card if it's the target */}
+                {/* Ghost zone after this card if ghost.p matches */}
+                {isGhostVisible && ghost && ghost.p === cardIndex + 1 && (
+                  <div
+                    data-slot="card-ghost-zone"
+                    className={cn(
+                      "flex items-center justify-center",
+                      "h-20 rounded-lg",
+                      "bg-blue-100 dark:bg-blue-950/30",
+                      "border-2 border-dashed border-blue-300 dark:border-blue-700",
+                      "animate-in fade-in-0 duration-200"
+                    )}
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    <span className="text-blue-500 dark:text-blue-400 text-sm font-medium opacity-70">
+                      Place card here
+                    </span>
+                  </div>
+                )}
+
+                {/* Show drop indicator after each card if it's the target (quick drop) */}
                 {droppable.isOver && !isGhostVisible && (
-                  <DropIndicator 
-                    position="after" 
+                  <DropIndicator
+                    position="after"
                     orientation="vertical"
                     dragItem={currentDragItem}
                   />
@@ -338,8 +265,8 @@ export function KanbanList({
             />
           )}
 
-          {/* Empty state when not dragging */}
-          {list.cards.length === 0 && !droppable.isOver && (
+          {/* Empty state when not dragging and no ghost visible */}
+          {list.cards.length === 0 && !droppable.isOver && !isGhostVisible && (
             <div className="flex items-center justify-center h-20 text-sm text-muted-foreground">
               No cards
             </div>

@@ -95,6 +95,33 @@ export {
   type UseListDragAnimationOptions,
 } from "./hooks/use-list-drag-animation";
 
+export {
+  useCardDragAnimation,
+  applyCardSlides,
+  resetCardSlides,
+  getCardInsertionIndex,
+  calculateGapIndex,
+  isValidSameListDrop,
+  isValidCrossListDrop,
+  calculateNewIndexSameList,
+  calculateNewIndexCrossList,
+  calculateCardDropInfo,
+  calculateSlidesSameList,
+  calculateSlidesTargetCrossList,
+  calculateSlidesSourceCrossList,
+  calculateCardSlideOffsets,
+  detectCardHoverTarget,
+  type ListId,
+  type CardSlide,
+  type CardSlideMap,
+  type CrossListSourceMode,
+  type CardHoverTarget,
+  type CardGhost,
+  type CardDropInfo,
+  type CardDragAnimationResult,
+  type UseCardDragAnimationOptions,
+} from "./hooks/use-card-drag-animation";
+
 // ============================================================
 // Sensors
 // ============================================================

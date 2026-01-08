@@ -274,38 +274,21 @@ export function KanbanBoard(props: KanbanBoardProps) {
 
   const handleDragEnd = React.useCallback(
     (item: DragItem, target: DropTarget | null, position: InsertPosition | null) => {
-      console.log("[DRAG-END] Called with:", {
-        itemType: item.type,
-        itemId: item.id,
-        itemData: item.data,
-        targetType: target?.type,
-        targetId: target?.id,
-        positionIndex: position?.index,
-        positionListId: position?.listId,
-        listDropPositionRef: listDropPositionRef.current,
-      });
-
       // Handle list reorder operations
       if (item.type === "list") {
         if (!hasIndex(item.data)) {
-          console.log("[DRAG-END] No index in item.data, returning");
           return;
         }
 
         const startIndex = item.data.index;
-        console.log("[DRAG-END] List drag - startIndex:", startIndex);
 
         // Use our calculated drop position if available (from the animation system)
         if (listDropPositionRef.current) {
           const { position: dropPos, draggedIndex } = listDropPositionRef.current;
           const endIndex = calculateNewIndex(draggedIndex, dropPos);
-          console.log("[DRAG-END] Using listDropPositionRef:", { dropPos, draggedIndex, endIndex });
 
           if (startIndex !== endIndex) {
-            console.log("[DRAG-END] Calling onListReorder via ref:", startIndex, "->", endIndex);
             props.onListReorder(startIndex, endIndex);
-          } else {
-            console.log("[DRAG-END] startIndex === endIndex, no reorder");
           }
           listDropPositionRef.current = null; // Clear after use
           return;
@@ -313,30 +296,21 @@ export function KanbanBoard(props: KanbanBoardProps) {
 
         // Fallback to context-provided position
         if (!position) {
-          console.log("[DRAG-END] No position provided, returning");
           return;
         }
 
         const endIndex = position.index;
-        console.log("[DRAG-END] Using context position - endIndex:", endIndex);
 
         if (target?.type === "list" && target?.id) {
           // List-to-list drop: convert target list ID to its board index
           const lists = props.lists;
           const targetListIndex = lists.findIndex(list => list.id === target.id);
-          console.log("[DRAG-END] Target is list, targetListIndex:", targetListIndex);
 
           if (targetListIndex !== -1 && startIndex !== targetListIndex) {
-            console.log("[DRAG-END] Calling onListReorder via target:", startIndex, "->", targetListIndex);
             props.onListReorder(startIndex, targetListIndex);
-          } else {
-            console.log("[DRAG-END] Same position or invalid target, no reorder");
           }
         } else if (startIndex !== endIndex) {
-          console.log("[DRAG-END] Calling onListReorder via position:", startIndex, "->", endIndex);
           props.onListReorder(startIndex, endIndex);
-        } else {
-          console.log("[DRAG-END] startIndex === endIndex, no reorder");
         }
       } else if (item.type === "card") {
         // Handle card operations silently (no logs for cards)

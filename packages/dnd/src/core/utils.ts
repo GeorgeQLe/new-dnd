@@ -215,16 +215,7 @@ export function calculateHorizontalInsertPosition(
   items: HTMLElement[],
   draggedId: UniqueId
 ): InsertPosition | null {
-  console.log("[HORIZ-INSERT] Called with:", {
-    pointX: point.x,
-    containerId,
-    draggedId,
-    itemCount: items.length,
-    itemIds: items.map(i => i.getAttribute("data-dnd-id")),
-  });
-
   if (items.length === 0) {
-    console.log("[HORIZ-INSERT] No items, returning index 0");
     return {
       listId: containerId,
       index: 0,
@@ -240,11 +231,9 @@ export function calculateHorizontalInsertPosition(
     if (itemId === draggedId) continue;
 
     const rect = getRect(item);
-    console.log(`[HORIZ-INSERT] Item ${i} (${itemId}): left=${rect.left}, right=${rect.right}, pointX=${point.x}`);
 
     if (point.x >= rect.left && point.x <= rect.right) {
       // Point is within this item - return its ORIGINAL index
-      console.log(`[HORIZ-INSERT] Point within item ${i} bounds, returning index ${i}`);
       return {
         listId: containerId,
         index: i,
@@ -254,7 +243,6 @@ export function calculateHorizontalInsertPosition(
   }
 
   // Second pass: use midpoint logic for gaps/ends, tracking original indices
-  console.log("[HORIZ-INSERT] Point not within any item bounds, using midpoint logic");
   let insertIndex = 0;
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
@@ -265,11 +253,9 @@ export function calculateHorizontalInsertPosition(
 
     if (point.x >= midpoint) {
       insertIndex = i + 1; // Insert after this item (using original index)
-      console.log(`[HORIZ-INSERT] Past midpoint of item ${i}, insertIndex now ${insertIndex}`);
     }
   }
 
-  console.log(`[HORIZ-INSERT] Final insertIndex: ${insertIndex}`);
   return {
     listId: containerId,
     index: insertIndex,
