@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This is a **custom drag-and-drop library** built for Kanban boards using React 19, Next.js 15, and TypeScript. The project features an advanced ghost indicator system with intelligent same-list validation and smooth FLIP animations.
+This is a **custom drag-and-drop library** built for Kanban boards using React 19, Next.js 16, and TypeScript. The project features an advanced ghost indicator system with intelligent same-list validation and smooth FLIP animations.
 
 ## Key Commands
 
@@ -19,9 +19,8 @@ npm run build
 # Type checking
 npm run typecheck
 
-# Linting (run after code changes)
-npm run lint
-npm run lint:fix
+# Linting: `npm run lint` calls `next lint`, which Next.js 16 removed.
+# Until the script is migrated to the ESLint CLI, rely on typecheck and build.
 ```
 
 ### Database
@@ -38,7 +37,7 @@ npx drizzle-kit studio
 
 ## Architecture & Best Practices
 
-### Next.js 15 + React 19 Patterns
+### Next.js 16 + React 19 Patterns
 
 #### Server Components (Default)
 ```typescript
@@ -376,9 +375,6 @@ GOOGLE_CLIENT_SECRET=...
 ```bash
 # Run type checking before commits
 npm run typecheck
-
-# Run linting
-npm run lint
 
 # Build and check for errors
 npm run build
